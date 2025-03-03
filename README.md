@@ -1,4 +1,4 @@
-# OpenAI Chat Chrome Extension
+# OpenAI Chat Mozilla Extension
 
 A Mozilla extension for chatting with OpenAI's GPT models directly from your browser.
 
@@ -28,7 +28,7 @@ A Mozilla extension for chatting with OpenAI's GPT models directly from your bro
 
 ## Installation
 1. Navigate to https://addons.mozilla.org/ru/firefox/addon/openai-chat-extension/
-2. Add extention to your browser
+2. Add extension to your browser
 3. Add your OpenAI API key in the extension settings
 
 ## Usage
