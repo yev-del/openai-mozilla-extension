@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>OpenAI Chat</title>
+        <!-- Google Fonts preconnect for better performance -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <!-- Custom fonts import -->
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+        <!-- External libraries and styles -->
+        <link rel="stylesheet" href="lib/default.min.css">
+        <link rel="stylesheet" href="styles.css">
+        <script src="lib/marked.min.js"></script>
+        <script src="lib/highlight.min.js"></script>
+        <script src="lib/purify.min.js"></script>
+        <!-- Browser polyfill for compatibility -->
+        <script src="browser-polyfill.js"></script>
+    </head>
+<body>
+    <!-- Main container -->
+    <div class="container">
+        <!-- Header section with model selector and action buttons -->
+        <div class="header">
+            <select id="model-select">
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="gpt-4">GPT-4</option>
+            </select>
+            <div class="header-actions">
+                <!-- Clear history button with trash icon -->
+                <button id="clear-history">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                </button>
+                <!-- Settings button with gear icon -->
+                <button id="settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Settings panel -->
+        <div id="settings-panel" class="hidden">
+            <!-- API key input section -->
+            <div class="settings-group">
+                <label for="api-key">OpenAI API Key:</label>
+                <input type="text" id="api-key" placeholder="sk-...">
+                <small class="api-key-notice">
+                    Your API key is stored locally in your browser.
+                    <button id="clear-api-key" class="text-button">Clear saved API key</button>
+                </small>
+            </div>
+            <!-- Theme and color settings -->
+            <div class="settings-row">
+                <div class="settings-group compact">
+                    <label>Theme:</label>
+                    <select id="theme-select">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+                <div class="settings-group compact">
+                    <label>Accent Color:</label>
+                    <div class="color-palette-wrapper">
+                        <div class="color-palette" id="color-palette">
+                            <!-- Color options -->
+                            <div class="color-option" data-color="#10A37F" style="background-color: #10A37F;"></div>
+                            <div class="color-option" data-color="#3B82F6" style="background-color: #3B82F6;"></div>
+                            <div class="color-option" data-color="#6366F1" style="background-color: #6366F1;"></div>
+                            <div class="color-option" data-color="#EF4444" style="background-color: #EF4444;"></div>
+                            <div class="color-option" data-color="#F59E0B" style="background-color: #F59E0B;"></div>
+                            <div class="color-option" data-color="#8B5CF6" style="background-color: #8B5CF6;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Save settings button -->
+            <div class="settings-group compact">
+                <label>&nbsp;</label>
+                <div class="button-wrapper">
+                    <button id="save-settings">Save Settings</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat messages container -->
+        <div id="chat-container"></div>
+        
+        <!-- Input area -->
+        <div class="input-container">
+            <textarea id="user-input" placeholder="Type your message..."></textarea>
+            <button id="send-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Notification popup -->
+    <div id="notification" class="notification hidden">
+        Settings saved successfully!
+    </div>
+
+    <!-- External scripts -->
+    <script src="lib/marked.min.js"></script>
+    <script src="lib/highlight.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap');
+
+/* Fixed dimensions for extension popup */
+html {
+    width: 650px;
+    height: 550px;
+    overflow: hidden;
+}
+
+/* Theme variables */
+:root {
+    --accent-color: #10A37F;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Dark theme override */
+body.dark {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+}
+
+/* Base body styles */
+body {
+    width: 650px;
+    height: 550px;
+    margin: 0;
+    font-family: 'Manrope', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+/* Main container */
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+}
+
+/* Header with model selector and actions */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+/* Header buttons container */
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Model dropdown */
+#model-select {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--text-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    height: 36px; /* Fixed height */
+}
+
+/* Header action buttons */
+.header-actions button {
+    padding: 8px;
+    height: 36px; /* Fixed height */
+    width: 36px; /* Fixed width */
+}
+
+/* Chat messages container */
+#chat-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 16px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 350px; /* Minimum height for content */
+}
+
+/* Message bubble base style */
+.message {
+    max-width: 85%;
+    margin: 8px 0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* User message style */
+.user-message {
+    background-color: var(--accent-color);
+    color: white;
+    align-self: flex-end;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+}
+
+/* Assistant message style */
+.assistant-message {
+    background-color: var(--bg-primary);
+    border-bottom-left-radius: 4px;
+}
+
+/* Input area container */
+.input-container {
+    position: sticky;
+    bottom: 12px; /* Bottom spacing */
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    margin-top: auto;
+    padding: 8px;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px; /* Bottom margin for Firefox */
+}
+
+/* Text input field */
+#user-input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--text-secondary);
+    border-radius: 8px;
+    resize: none;
+    height: 20px;
+    max-height: 120px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Button base style */
+button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Button hover effect */
+button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* Button container */
+.button-wrapper {
+    display: flex;
+    align-items: center;
+    height: 38px; /* Match select height */
+}
+
+/* Save settings button */
+#save-settings {
+    height: 38px;
+    padding: 0 24px;
+    white-space: nowrap;
+    margin: 0;
+}
+
+/* Settings panel */
+#settings-panel {
+    position: absolute;
+    top: 50px;
+    left: 12px;
+    right: 12px;
+    background-color: var(--bg-primary);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    border: 1px solid var(--text-secondary);
+    max-width: calc(100% - 24px);
+    box-sizing: border-box;
+    transition: opacity 0.3s ease; /* Smooth transition */
+    opacity: 1;
+}
+
+/* Hidden settings panel */
+#settings-panel.hidden {
+    opacity: 0;
+    pointer-events: none; /* Disable interaction */
+}
+
+/* Settings group */
+.settings-group {
+    margin-bottom: 20px;
+}
+
+/* Compact settings group */
+.settings-group.compact {
+    margin-bottom: 0;
+    min-width: fit-content;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Settings row layout */
+.settings-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start; /* Top alignment */
+}
+
+/* Settings label */
+.settings-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Settings text input */
+.settings-group input[type="text"] {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--text-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    height: 36px;
+    box-sizing: border-box;
+    margin-bottom: 4px; /* Reduced spacing */
+}
+
+/* Settings dropdown */
+.settings-group select {
+    width: 120px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--text-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    height: 38px;
+    box-sizing: border-box;
+}
+
+/* Color palette container */
+.color-palette-wrapper {
+    display: flex;
+    align-items: center;
+    height: 38px; /* Match select height */
+}
+
+/* Color options layout */
+.color-palette {
+    display: flex;
+    gap: 6px;
+}
+
+/* Color option */
+.color-option {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    border: 2px solid transparent;
+    box-sizing: border-box;
+}
+
+/* Color option hover */
+.color-option:hover {
+    transform: scale(1.1);
+}
+
+/* Selected color */
+.color-option.selected {
+    border-color: var(--text-primary);
+}
+
+/* Hidden elements */
+.hidden {
+    display: none;
+}
+
+/* API key notice */
+.api-key-notice {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 4px 0;
+}
+
+/* Text button */
+.text-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+    transform: none;
+    margin-left: 8px;
+}
+
+/* Text button hover */
+.text-button:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* Notification popup */
+.notification {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Center positioning */
+    background-color: var(--accent-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 2000;
+}
+
+/* Visible notification */
+.notification.show {
+    opacity: 1;
+}
+
+/* Hidden notification */
+.notification.hidden {
+    display: none;
+}
