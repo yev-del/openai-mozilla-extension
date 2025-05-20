@@ -76,6 +76,20 @@ body {
     height: 36px; /* Fixed height */
 }
 
+/* Provider dropdown */
+#provider-select {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--text-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    height: 36px;
+    margin-right: 8px;
+}
+
 /* Header action buttons */
 .header-actions button {
     padding: 8px;
@@ -306,6 +320,54 @@ button:hover {
 /* Hidden elements */
 .hidden {
     display: none;
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0% { opacity: 0.4; transform: scale(0.95); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.4; transform: scale(0.95); }
+}
+
+@keyframes dot-pulse {
+    0% { transform: translateY(0); }
+    25% { transform: translateY(-3px); }
+    50% { transform: translateY(0); }
+}
+
+.loading-dots {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent-color);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.loading-dots::after {
+    content: "";
+    display: inline-flex;
+    min-width: 24px;
+}
+
+.loading-dots::before {
+    content: "•••";
+    letter-spacing: 2px;
+    display: inline-block;
+    margin-left: 4px;
+}
+
+.loading-dots::before span:nth-child(1) {
+    animation: dot-pulse 1.2s infinite 0s;
+}
+
+.loading-dots::before span:nth-child(2) {
+    animation: dot-pulse 1.2s infinite 0.2s;
+}
+
+.loading-dots::before span:nth-child(3) {
+    animation: dot-pulse 1.2s infinite 0.4s;
 }
 
 /* API key notice */

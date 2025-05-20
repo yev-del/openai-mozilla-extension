@@ -29,8 +29,14 @@ function setCleanHtml(element, html) {
 }
 
 // API configuration and constants
-const API_URL = 'https://api.openai.com/v1/chat/completions';
-let API_KEY = '';
+const API_URLS = {
+    openai: 'https://api.openai.com/v1/chat/completions',
+    claude: 'https://api.anthropic.com/v1/messages'
+};
+let API_KEYS = {
+    openai: '',
+    claude: ''
+};
 let CURRENT_MODEL = 'gpt-4';
 let chatHistory = [];
 
@@ -39,11 +45,13 @@ const elements = {
     chatContainer: document.getElementById('chat-container'),
     userInput: document.getElementById('user-input'),
     sendButton: document.getElementById('send-button'),
+    providerSelect: document.getElementById('provider-select'),
     modelSelect: document.getElementById('model-select'),
     clearHistoryButton: document.getElementById('clear-history'),
     settingsButton: document.getElementById('settings'),
     settingsPanel: document.getElementById('settings-panel'),
     apiKeyInput: document.getElementById('api-key'),
+    claudeKeyInput: document.getElementById('claude-api-key'),
     themeSelect: document.getElementById('theme-select'),
     saveSettingsButton: document.getElementById('save-settings'),
     clearApiKeyButton: document.getElementById('clear-api-key'),
@@ -52,10 +60,20 @@ const elements = {
 
 // Initialize extension settings and restore chat history
 document.addEventListener('DOMContentLoaded', async () => {
-    const settings = await browser.storage.sync.get(['apiKey', 'theme', 'primaryColor', 'chatHistory']);
+    const settings = await browser.storage.sync.get(null);
+    console.log('Loaded settings:', settings);
+
+    API_KEYS.openai = settings.apiKey || '';
+    API_KEYS.claude = settings.claudeKey || '';
     
-    API_KEY = settings.apiKey || '';
-    elements.apiKeyInput.value = API_KEY;
+    console.log('Loaded API keys:', {
+        openai: API_KEYS.openai,
+        claude: API_KEYS.claude
+    });
+
+    // Set initial values for API key inputs
+    elements.apiKeyInput.value = API_KEYS.openai;
+    elements.claudeKeyInput.value = API_KEYS.claude;
     
     if (settings.chatHistory) {
         chatHistory = settings.chatHistory;
@@ -66,6 +84,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyAccentColor(settings.primaryColor || '#10A37F');
     
     elements.modelSelect.value = CURRENT_MODEL;
+
+    // Populate model options based on provider
+    const modelOptions = {
+        openai: [
+            { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+            { value: 'gpt-4', label: 'GPT-4' },
+            { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+            { value: 'gpt-4o', label: 'GPT-4 Omni' }
+        ],
+        claude: [
+            { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+            { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
+            { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' }
+        ]
+    };
+
+    function updateModelOptions(provider) {
+        const models = modelOptions[provider] || [];
+        elements.modelSelect.innerHTML = '';
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.value;
+            option.textContent = model.label;
+            elements.modelSelect.appendChild(option);
+        });
+        elements.modelSelect.disabled = models.length === 0;
+    }
+
+    elements.providerSelect.addEventListener('change', () => {
+        updateModelOptions(elements.providerSelect.value);
+    });
+
+    updateModelOptions(elements.providerSelect.value);
 });
 
 // Restore previous chat messages from history
@@ -104,33 +155,78 @@ function showNotification(duration = 2000) {
     }, duration);
 }
 
-// Send message to OpenAI API
-async function sendMessage(message) {
+// Send message to API
+async function sendMessage(userMessage) {
+    const provider = elements.providerSelect.value;
+    const API_KEY = API_KEYS[provider];
     if (!API_KEY) {
-        throw new Error('Please set your OpenAI API key');
+        throw new Error(`Please set your ${provider} API key`);
     }
 
     try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            },
-            body: JSON.stringify({
-                model: elements.modelSelect.value,
-                messages: [
-                    ...chatHistory.map(msg => ({
-                        role: msg.isUser ? 'user' : 'assistant',
-                        content: msg.content
-                    })),
-                    { role: 'user', content: message }
-                ]
-            })
-        });
-
-        const data = await response.json();
-        return data.choices[0].message.content;
+        if (provider === 'openai') {
+            // OpenAI API call via background script to avoid CORS issues
+            const messages = [
+                ...chatHistory.map(msg => ({
+                    role: msg.isUser ? 'user' : 'assistant',
+                    content: msg.content
+                })),
+                { role: 'user', content: userMessage }
+            ];
+            
+            // Send message to background script
+            return new Promise((resolve, reject) => {
+                browser.runtime.sendMessage({
+                    action: "callOpenAIAPI",
+                    apiKey: API_KEY,
+                    model: elements.modelSelect.value,
+                    messages: messages
+                }, response => {
+                    if (response.success) {
+                        if (response.data.choices && response.data.choices.length > 0) {
+                            resolve(response.data.choices[0].message.content);
+                        } else if (response.data.error) {
+                            reject(new Error(response.data.error.message || 'OpenAI API error'));
+                        } else {
+                            reject(new Error('Unexpected response format from OpenAI API'));
+                        }
+                    } else {
+                        reject(new Error(response.error || 'Failed to call OpenAI API'));
+                    }
+                });
+            });
+        } else if (provider === 'claude') {
+            // Claude API call via background script to avoid CORS issues
+            const messages = [
+                ...chatHistory.map(msg => ({
+                    role: msg.isUser ? 'user' : 'assistant',
+                    content: msg.content
+                })),
+                { role: 'user', content: userMessage }
+            ];
+            
+            // Send message to background script
+            return new Promise((resolve, reject) => {
+                browser.runtime.sendMessage({
+                    action: "callClaudeAPI",
+                    apiKey: API_KEY,
+                    model: elements.modelSelect.value,
+                    messages: messages
+                }, response => {
+                    if (response.success) {
+                        if (response.data.content && response.data.content.length > 0) {
+                            resolve(response.data.content[0].text);
+                        } else if (response.data.error) {
+                            reject(new Error(response.data.error.message || 'Claude API error'));
+                        } else {
+                            reject(new Error('Unexpected response format from Claude API'));
+                        }
+                    } else {
+                        reject(new Error(response.error || 'Failed to call Claude API'));
+                    }
+                });
+            });
+        }
     } catch (error) {
         console.error('API Error:', error);
         throw error;
@@ -163,7 +259,21 @@ elements.sendButton.addEventListener('click', async () => {
             addMessageToChat(message, true);
             elements.userInput.value = '';
             
+            // Create loading message with animated dots
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant-message';
+            
+            // Create a span with the loading-dots class for animation
+            const loadingSpan = document.createElement('span');
+            loadingSpan.className = 'loading-dots';
+            loadingSpan.textContent = 'Thinking';
+            
+            loadingDiv.appendChild(loadingSpan);
+            elements.chatContainer.appendChild(loadingDiv);
+            elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+
             const response = await sendMessage(message);
+            elements.chatContainer.removeChild(loadingDiv);
             addMessageToChat(response, false);
         } catch (error) {
             addMessageToChat(`Error: ${error.message}`, false);
@@ -185,23 +295,42 @@ elements.settingsButton.addEventListener('click', () => {
 });
 
 elements.clearApiKeyButton.addEventListener('click', async () => {
-    await browser.storage.sync.set({ apiKey: '' });
-    elements.apiKeyInput.value = '';
-    API_KEY = '';
+    const provider = elements.providerSelect.value;
+    if (provider === 'openai') {
+        await browser.storage.sync.set({ apiKey: '' });
+        elements.apiKeyInput.value = '';
+        API_KEYS.openai = '';
+    } else if (provider === 'claude') {
+        await browser.storage.sync.set({ claudeKey: '' });
+        elements.claudeKeyInput.value = '';
+        API_KEYS.claude = '';
+    }
 });
 
 elements.saveSettingsButton.addEventListener('click', async () => {
-    const apiKey = elements.apiKeyInput.value;
+    // Get all API keys
+    API_KEYS.openai = elements.apiKeyInput.value;
+    API_KEYS.claude = elements.claudeKeyInput.value;
+
     const theme = elements.themeSelect.value;
     const selectedColor = document.querySelector('.color-option.selected')?.getAttribute('data-color') || '#10A37F';
 
-    await browser.storage.sync.set({ 
-        apiKey, 
-        theme, 
-        primaryColor: selectedColor 
+    // Save all settings
+    await browser.storage.sync.set({
+        apiKey: API_KEYS.openai,
+        claudeKey: API_KEYS.claude,
+        theme,
+        primaryColor: selectedColor
     });
     
-    API_KEY = apiKey;
+    // Log saved settings for debugging
+    console.log('Saved settings:', {
+        openai: API_KEYS.openai,
+        claude: API_KEYS.claude,
+        theme,
+        primaryColor: selectedColor
+    });
+    
     applyTheme(theme);
     applyAccentColor(selectedColor);
     showNotification();

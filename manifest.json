@@ -1,16 +1,20 @@
 {
     "manifest_version": 2,
-    "name": "OpenAI Chat Extension",
-    "version": "1.0.0",
-    "description": "OpenAI Chat Assistant Browser Extension",
+    "name": "ChatGPT & Claude API Chat Client",
+    "version": "1.1",
+    "description": "ChatGPT & Claude API Chat Browser Extension",
     "permissions": [
-        "storage"
+        "storage",
+        "https://api.anthropic.com/*",
+        "https://api.openai.com/*"
     ],
     "browser_action": {
         "default_popup": "popup.html",
         "default_icon": {
             "16": "icons/icon16.png",
+            "32": "icons/icon32.png",
             "48": "icons/icon48.png",
+            "64": "icons/icon64.png",
             "128": "icons/icon128.png"
         }
     },

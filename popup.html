@@ -22,10 +22,13 @@
     <div class="container">
         <!-- Header section with model selector and action buttons -->
         <div class="header">
-            <select id="model-select">
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                <option value="gpt-4">GPT-4</option>
-            </select>
+            <div style="display: flex; gap: 8px;">
+                <select id="provider-select">
+                    <option value="openai">OpenAI</option>
+                    <option value="claude">Claude</option>
+                </select>
+                <select id="model-select"></select>
+            </div>
             <div class="header-actions">
                 <!-- Clear history button with trash icon -->
                 <button id="clear-history">
@@ -52,6 +55,8 @@
             <div class="settings-group">
                 <label for="api-key">OpenAI API Key:</label>
                 <input type="text" id="api-key" placeholder="sk-...">
+                <label for="claude-api-key">Claude API Key:</label>
+                <input type="text" id="claude-api-key" placeholder="Enter Claude key">
                 <small class="api-key-notice">
                     Your API key is stored locally in your browser.
                     <button id="clear-api-key" class="text-button">Clear saved API key</button>
