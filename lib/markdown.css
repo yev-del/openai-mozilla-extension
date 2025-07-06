@@ -1,0 +1,142 @@
+/* Markdown Styling */
+
+/* Blockquotes */
+.assistant-message blockquote {
+    border-left: 4px solid var(--accent-color);
+    margin: 0.5em 0;
+    padding: 0.5em 10px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.dark .assistant-message blockquote {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Code blocks */
+.assistant-message pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 0.5em 0;
+}
+
+.dark .assistant-message pre {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Inline code */
+.assistant-message code:not(pre code) {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.dark .assistant-message code:not(pre code) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Lists */
+.assistant-message ul, 
+.assistant-message ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+.assistant-message li {
+    margin: 0.25em 0;
+}
+
+/* Tables */
+.assistant-message table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+.assistant-message th, 
+.assistant-message td {
+    border: 1px solid var(--text-secondary);
+    padding: 0.5em;
+    text-align: left;
+}
+
+.assistant-message th {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .assistant-message th {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Headings */
+.assistant-message h1,
+.assistant-message h2,
+.assistant-message h3,
+.assistant-message h4,
+.assistant-message h5,
+.assistant-message h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.assistant-message h1 {
+    font-size: 1.5em;
+}
+
+.assistant-message h2 {
+    font-size: 1.3em;
+}
+
+.assistant-message h3 {
+    font-size: 1.1em;
+}
+
+/* Horizontal rule */
+.assistant-message hr {
+    border: 0;
+    height: 1px;
+    background-color: var(--text-secondary);
+    margin: 1em 0;
+}
+
+/* Links */
+.assistant-message a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.assistant-message a:hover {
+    text-decoration: underline;
+}
+
+/* Images */
+.assistant-message img {
+    max-width: 100%;
+    border-radius: 4px;
+}
+
+/* Task lists */
+.assistant-message input[type="checkbox"] {
+    margin-right: 0.5em;
+}
+
+/* Strikethrough */
+.assistant-message del {
+    text-decoration: line-through;
+}
+
+/* Emphasis */
+.assistant-message em {
+    font-style: italic;
+}
+
+/* Strong */
+.assistant-message strong {
+    font-weight: bold;
+}

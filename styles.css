@@ -2,8 +2,8 @@
 
 /* Fixed dimensions for extension popup */
 html {
-    width: 650px;
-    height: 550px;
+    width: 650px; /* Fixed width */
+    height: 600px; /* Fixed height */
     overflow: hidden;
 }
 
@@ -29,21 +29,106 @@ body.dark {
 /* Base body styles */
 body {
     width: 650px;
-    height: 550px;
+    height: 600px;
     margin: 0;
     font-family: 'Manrope', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     transition: all 0.3s ease;
     box-sizing: border-box;
+    overflow: hidden; /* Prevent scrolling at body level */
 }
 
 /* Main container */
 .container {
-    height: 100%;
+    width: 650px;
+    height: 600px;
     display: flex;
     flex-direction: column;
-    padding: 12px;
+    padding: 8px;
+    box-sizing: border-box;
+    position: relative; /* Add position relative */
+    overflow: hidden; /* Prevent content from overflowing */
+}
+
+/* Tab navigation */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--text-secondary);
+    margin-bottom: 12px;
+    background-color: var(--bg-secondary);
+    border-radius: 8px 8px 0 0;
+    width: 650px; /* Fixed width */
+}
+
+.tab {
+    padding: 12px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+    width: 216px; /* Fixed width: 650px / 3 tabs */
+    justify-content: center;
+}
+
+.tab:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 25%;
+    height: 50%;
+    width: 1px;
+    background-color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.tab.active {
+    border-bottom: 2px solid var(--accent-color);
+    color: var(--accent-color);
+    background-color: var(--bg-primary);
+}
+
+.tab:hover {
+    background-color: var(--bg-primary);
+}
+
+.tab svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Tab content */
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    height: 550px; /* Fixed height: 600px - 50px for tabs */
+    width: 650px; /* Fixed width */
+    box-sizing: border-box;
+}
+
+.tab-pane {
+    display: none;
+    height: 550px; /* Fixed height */
+    flex-direction: column;
+    width: 650px; /* Fixed width */
+    box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.tab-pane.active {
+    display: flex;
+    width: 650px; /* Fixed width */
+    height: 550px; /* Fixed height */
+    box-sizing: border-box; /* Include padding in width calculation */
+}
+
+/* Settings tab specific styles */
+#settings-tab {
+    padding: 0 24px;
+    position: relative;
+    padding-bottom: 70px; /* Increased space for the save button */
 }
 
 /* Header with model selector and actions */
@@ -51,9 +136,28 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: 4px 0;
     border-bottom: 1px solid var(--text-secondary);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    width: 634px; /* Fixed width: 650px - 16px padding */
+}
+
+/* Header without bottom border */
+.header-no-border {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    margin-bottom: 8px;
+    margin-top: -5px; /* Move up a bit */
+    width: 634px; /* Fixed width: 650px - 16px padding */
+}
+
+/* Model select container - left aligned */
+.model-select-container {
+    display: flex;
+    width: 200px; /* Fixed width */
+    margin-left: 8px;
 }
 
 /* Header buttons container */
@@ -61,65 +165,113 @@ body {
     display: flex;
     gap: 8px;
     align-items: center;
+    width: 40px; /* Fixed width */
 }
 
 /* Model dropdown */
-#model-select {
-    padding: 6px 12px;
-    border-radius: 8px;
+.model-select {
+    padding: 4px 8px;
+    border-radius: 6px;
     border: 1px solid var(--text-secondary);
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Manrope', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
-    height: 36px; /* Fixed height */
+    height: 28px; /* Reduced height */
+    width: 200px; /* Fixed width */
+    box-sizing: border-box; /* Ensure consistent sizing */
 }
 
 /* Provider dropdown */
 #provider-select {
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
     border: 1px solid var(--text-secondary);
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Manrope', sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
-    height: 36px;
-    margin-right: 8px;
+    height: 28px; /* Reduced height */
+    width: 120px; /* Fixed width */
+    margin-right: 6px;
 }
 
 /* Header action buttons */
 .header-actions button {
-    padding: 8px;
-    height: 36px; /* Fixed height */
-    width: 36px; /* Fixed width */
+    padding: 4px;
+    height: 28px; /* Reduced height */
+    width: 28px; /* Reduced width */
 }
 
 /* Chat messages container */
-#chat-container {
-    flex-grow: 1;
+.chat-container {
+    width: 634px; /* Fixed width: 650px - 16px padding */
     overflow-y: auto;
     background-color: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 16px;
-    padding-bottom: 8px;
-    margin-bottom: 8px;
+    border-radius: 8px;
+    padding: 8px;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
     display: flex;
     flex-direction: column;
-    min-height: 350px; /* Minimum height for content */
+    height: 480px; /* Fixed height */
+    box-sizing: border-box;
+    position: relative; /* Add position relative */
 }
 
 /* Message bubble base style */
 .message {
-    max-width: 85%;
+    max-width: 520px; /* Fixed max-width instead of percentage */
     margin: 8px 0;
     padding: 12px 16px;
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
     font-size: 14px;
     line-height: 1.5;
+    position: relative; /* For positioning the copy button */
+    box-sizing: border-box; /* Ensure padding is included in width calculation */
+    word-wrap: break-word; /* Ensure long words don't overflow */
+}
+
+/* Copy button for messages - base styles */
+.copy-button {
+    position: absolute;
+    top: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 5;
+    background: none;
+}
+
+/* Show copy button on message hover */
+.message:hover .copy-button {
+    opacity: 1;
+}
+
+/* Copy button icon */
+.copy-button svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Copy button for assistant messages - right side, black color */
+.assistant-message .copy-button {
+    right: -30px; /* Position outside the bubble on the right */
+    color: var(--text-primary);
+}
+
+/* Copy button for user messages - left side, white color */
+.user-message .copy-button {
+    left: -30px; /* Position outside the bubble on the left */
+    color: var(--text-primary); /* Changed to text-primary for better visibility */
 }
 
 /* User message style */
@@ -140,7 +292,8 @@ body {
 /* Input area container */
 .input-container {
     position: sticky;
-    bottom: 12px; /* Bottom spacing */
+    bottom: 8px; /* Normal bottom spacing */
+    width: 634px; /* Fixed width: 650px - 16px padding */
     background-color: var(--bg-secondary);
     border-radius: 12px;
     box-shadow: var(--shadow-md);
@@ -149,22 +302,26 @@ body {
     z-index: 10;
     display: flex;
     gap: 8px;
-    margin-bottom: 12px; /* Bottom margin for Firefox */
+    margin-bottom: 8px; /* Normal bottom margin */
+    box-sizing: border-box;
 }
 
 /* Text input field */
-#user-input {
-    flex-grow: 1;
+.user-input {
+    width: 580px; /* Fixed width */
     padding: 8px 12px;
     border: 1px solid var(--text-secondary);
     border-radius: 8px;
     resize: none;
     height: 20px;
-    max-height: 120px;
+    min-height: 20px; /* Minimum height */
+    max-height: 120px; /* Maximum height */
     font-family: 'Manrope', sans-serif;
     font-size: 14px;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    overflow-y: hidden; /* Hide scrollbar initially */
+    transition: height 0.1s ease; /* Smooth height transition */
 }
 
 /* Button base style */
@@ -192,6 +349,7 @@ button:hover {
     display: flex;
     align-items: center;
     height: 38px; /* Match select height */
+    width: 120px; /* Fixed width */
 }
 
 /* Save settings button */
@@ -200,41 +358,21 @@ button:hover {
     padding: 0 24px;
     white-space: nowrap;
     margin: 0;
-}
-
-/* Settings panel */
-#settings-panel {
     position: absolute;
-    top: 50px;
-    left: 12px;
-    right: 12px;
-    background-color: var(--bg-primary);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: var(--shadow-md);
-    z-index: 1000;
-    border: 1px solid var(--text-secondary);
-    max-width: calc(100% - 24px);
-    box-sizing: border-box;
-    transition: opacity 0.3s ease; /* Smooth transition */
-    opacity: 1;
-}
-
-/* Hidden settings panel */
-#settings-panel.hidden {
-    opacity: 0;
-    pointer-events: none; /* Disable interaction */
+    bottom: 30px;
+    right: 24px;
 }
 
 /* Settings group */
 .settings-group {
     margin-bottom: 20px;
+    width: 550px; /* Fixed width */
 }
 
 /* Compact settings group */
 .settings-group.compact {
     margin-bottom: 0;
-    min-width: fit-content;
+    width: 120px; /* Fixed width */
     display: flex;
     flex-direction: column;
 }
@@ -244,6 +382,7 @@ button:hover {
     display: flex;
     gap: 24px;
     align-items: flex-start; /* Top alignment */
+    width: 600px; /* Fixed width */
 }
 
 /* Settings label */
@@ -255,8 +394,8 @@ button:hover {
 }
 
 /* Settings text input */
-.settings-group input[type="text"] {
-    width: 100%;
+.settings-group input[type="text"], .settings-group .api-input {
+    width: 550px; /* Fixed width */
     padding: 8px 12px;
     border-radius: 8px;
     border: 1px solid var(--text-secondary);
@@ -264,9 +403,19 @@ button:hover {
     color: var(--text-primary);
     font-family: 'Manrope', sans-serif;
     font-size: 14px;
-    height: 36px;
     box-sizing: border-box;
     margin-bottom: 4px; /* Reduced spacing */
+}
+
+/* Regular text input */
+.settings-group input[type="text"] {
+    height: 36px;
+}
+
+/* API input fields with increased height */
+.settings-group .api-input {
+    height: 60px; /* Increased height for 2-3 lines */
+    resize: none;
 }
 
 /* Settings dropdown */
@@ -288,12 +437,14 @@ button:hover {
     display: flex;
     align-items: center;
     height: 38px; /* Match select height */
+    width: 250px; /* Fixed width */
 }
 
 /* Color options layout */
 .color-palette {
     display: flex;
     gap: 6px;
+    width: 250px; /* Fixed width */
 }
 
 /* Color option */
@@ -379,6 +530,7 @@ button:hover {
     font-size: 12px;
     color: var(--text-secondary);
     padding: 4px 0;
+    width: 550px; /* Fixed width */
 }
 
 /* Text button */
@@ -415,6 +567,8 @@ button:hover {
     opacity: 0;
     transition: all 0.3s ease;
     z-index: 2000;
+    width: 200px; /* Fixed width */
+    height: 40px; /* Fixed height */
 }
 
 /* Visible notification */

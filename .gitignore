@@ -1,3 +1,77 @@
+# Mozilla Extension Build and Distribution Files
+*.xpi
+*.zip
+web-ext-artifacts/
+
+# Development and Documentation Files
+description.txt
+changelog.txt
+
+# System Files
 .DS_Store
-node_modules/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Temporary folders
+tmp/
+temp/
+
+# Windows specific
+desktop.ini
+
+# macOS specific
+.AppleDouble
+.LSOverride
+
+# Linux specific
+*~
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files (unless they're assets)
+*.tar
+*.gz
+*.rar
+*.7z
+
+# Development environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

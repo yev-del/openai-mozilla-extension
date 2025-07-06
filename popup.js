@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up marked options for secure rendering
     marked.setOptions({
         sanitize: false, // We'll use DOMPurify instead
+        gfm: true, // GitHub Flavored Markdown
+        breaks: true, // Convert line breaks to <br>
+        headerIds: true, // Generate IDs for headings
+        mangle: false, // Don't mangle email addresses
+        pedantic: false, // Don't conform to original markdown spec
+        smartLists: true, // Use smarter list behavior
+        smartypants: true, // Use "smart" typographic punctuation
         highlight: function(code, lang) {
             if (lang && hljs.getLanguage(lang)) {
                 try {
@@ -23,8 +30,58 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setCleanHtml(element, html) {
-    // We know this HTML has been sanitized with DOMPurify
-    element.innerHTML = html;
+    // Configure DOMPurify to allow necessary HTML elements and attributes for markdown
+    const purifyConfig = {
+        ALLOWED_TAGS: [
+            // Basic formatting
+            'p', 'div', 'span', 'br', 'hr',
+            // Headings
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            // Text formatting
+            'b', 'i', 'strong', 'em', 'mark', 'small', 'del', 'ins', 'sub', 'sup',
+            // Lists
+            'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+            // Code
+            'code', 'pre',
+            // Tables
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            // Links and images
+            'a', 'img',
+            // Blockquotes
+            'blockquote',
+            // Task lists
+            'input'
+        ],
+        ALLOWED_ATTR: [
+            // Global attributes
+            'id', 'class', 'style',
+            // Link attributes
+            'href', 'target', 'rel',
+            // Image attributes
+            'src', 'alt', 'title', 'width', 'height',
+            // Code attributes
+            'class', 'language',
+            // Task list attributes
+            'type', 'checked', 'disabled'
+        ],
+        ALLOW_DATA_ATTR: false,
+        ADD_ATTR: ['target'], // Allow target attribute for links
+        FORBID_TAGS: ['style', 'script'],
+        FORBID_ATTR: ['onerror', 'onload', 'onclick']
+    };
+
+    // Sanitize HTML with our custom configuration
+    const sanitizedHtml = DOMPurify.sanitize(html, purifyConfig);
+    
+    // Set the sanitized HTML to the element
+    element.innerHTML = sanitizedHtml;
+    
+    // Add target="_blank" to all links to open in new tab
+    element.querySelectorAll('a').forEach(link => {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+    });
+    
     return element;
 }
 
@@ -37,19 +94,37 @@ let API_KEYS = {
     openai: '',
     claude: ''
 };
-let CURRENT_MODEL = 'gpt-4';
-let chatHistory = [];
+let CURRENT_MODEL = {
+    openai: 'gpt-3.5-turbo',
+    claude: 'claude-3-sonnet-20240229'
+};
+let CURRENT_PROVIDER = 'openai';
+let chatHistories = {
+    openai: [],
+    claude: []
+};
 
 // DOM elements mapping
 const elements = {
-    chatContainer: document.getElementById('chat-container'),
-    userInput: document.getElementById('user-input'),
-    sendButton: document.getElementById('send-button'),
-    providerSelect: document.getElementById('provider-select'),
-    modelSelect: document.getElementById('model-select'),
-    clearHistoryButton: document.getElementById('clear-history'),
-    settingsButton: document.getElementById('settings'),
-    settingsPanel: document.getElementById('settings-panel'),
+    // Tab elements
+    tabs: document.querySelectorAll('.tab'),
+    tabPanes: document.querySelectorAll('.tab-pane'),
+    
+    // ChatGPT tab elements
+    openaiChatContainer: document.getElementById('openai-chat-container'),
+    openaiUserInput: document.getElementById('openai-user-input'),
+    openaiSendButton: document.getElementById('openai-send-button'),
+    openaiModelSelect: document.getElementById('openai-model-select'),
+    openaiClearHistoryButton: document.getElementById('openai-clear-history'),
+    
+    // Claude tab elements
+    claudeChatContainer: document.getElementById('claude-chat-container'),
+    claudeUserInput: document.getElementById('claude-user-input'),
+    claudeSendButton: document.getElementById('claude-send-button'),
+    claudeModelSelect: document.getElementById('claude-model-select'),
+    claudeClearHistoryButton: document.getElementById('claude-clear-history'),
+    
+    // Settings elements
     apiKeyInput: document.getElementById('api-key'),
     claudeKeyInput: document.getElementById('claude-api-key'),
     themeSelect: document.getElementById('theme-select'),
@@ -57,6 +132,18 @@ const elements = {
     clearApiKeyButton: document.getElementById('clear-api-key'),
     notification: document.getElementById('notification')
 };
+
+// Helper: Save input value for provider
+function saveInputDraft(provider, value) {
+    browser.storage.local.set({ [`draft_${provider}`]: value });
+}
+
+// Helper: Restore input value for provider
+async function restoreInputDraft(provider) {
+    const key = `draft_${provider}`;
+    const result = await browser.storage.local.get(key);
+    return result[key] || '';
+}
 
 // Initialize extension settings and restore chat history
 document.addEventListener('DOMContentLoaded', async () => {
@@ -75,17 +162,122 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.apiKeyInput.value = API_KEYS.openai;
     elements.claudeKeyInput.value = API_KEYS.claude;
     
-    if (settings.chatHistory) {
-        chatHistory = settings.chatHistory;
-        restoreChat();
+    // Restore chat histories
+    if (settings.chatHistory_openai) {
+        chatHistories.openai = settings.chatHistory_openai;
     }
     
-    applyTheme(settings.theme || 'light');
-    applyAccentColor(settings.primaryColor || '#10A37F');
+    if (settings.chatHistory_claude) {
+        chatHistories.claude = settings.chatHistory_claude;
+    }
     
-    elements.modelSelect.value = CURRENT_MODEL;
+    // For backward compatibility
+    if (settings.chatHistory && !settings.chatHistory_openai && !settings.chatHistory_claude) {
+        const provider = settings.provider || 'openai';
+        chatHistories[provider] = settings.chatHistory;
+    }
+    
+    // Restore provider and model selection - FIX: Properly restore both models
+    CURRENT_PROVIDER = settings.provider || 'openai';
+    
+    // Restore OpenAI model (backward compatibility with 'model' key)
+    if (settings.openaiModel) {
+        CURRENT_MODEL.openai = settings.openaiModel;
+    } else if (settings.model) {
+        CURRENT_MODEL.openai = settings.model;
+    }
+    
+    // Restore Claude model
+    if (settings.claudeModel) {
+        CURRENT_MODEL.claude = settings.claudeModel;
+    }
 
-    // Populate model options based on provider
+    console.log('Restored models:', CURRENT_MODEL);
+
+    // --- Исправление: корректно восстанавлием тему ---
+    const themeToApply = settings.theme || 'light';
+    applyTheme(themeToApply);
+    elements.themeSelect.value = themeToApply;
+
+    applyAccentColor(settings.primaryColor || '#10A37F');
+
+    // Set up tabs
+    setupTabs();
+
+    // Restore chat for both providers
+    await restoreChat('openai');
+    await restoreChat('claude');
+
+    // Restore input drafts
+    elements.openaiUserInput.value = await restoreInputDraft('openai');
+    elements.claudeUserInput.value = await restoreInputDraft('claude');
+
+    // Populate model options for both providers - this will set the correct values
+    populateModelOptions();
+    
+    // Set the active tab based on the last provider
+    setActiveTab(CURRENT_PROVIDER === 'claude' ? 'claude' : 'chatgpt');
+});
+
+// Set up tab functionality
+function setupTabs() {
+    elements.tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.getAttribute('data-tab');
+            setActiveTab(tabName);
+            
+            // Update current provider if switching to a chat tab
+            if (tabName === 'chatgpt') {
+                CURRENT_PROVIDER = 'openai';
+                browser.storage.sync.set({ provider: CURRENT_PROVIDER });
+            } else if (tabName === 'claude') {
+                CURRENT_PROVIDER = 'claude';
+                browser.storage.sync.set({ provider: CURRENT_PROVIDER });
+            }
+        });
+    });
+}
+
+// Set active tab
+function setActiveTab(tabName) {
+    // Update tab styling
+    elements.tabs.forEach(tab => {
+        if (tab.getAttribute('data-tab') === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Show active tab content
+    elements.tabPanes.forEach(pane => {
+        if (pane.id === `${tabName}-tab`) {
+            pane.classList.add('active');
+        } else {
+            pane.classList.remove('active');
+        }
+    });
+
+    // --- Ensure model select values are always in sync with CURRENT_MODEL ---
+    if (tabName === 'chatgpt') {
+        // OpenAI tab: ensure select is correct
+        if (elements.openaiModelSelect.value !== CURRENT_MODEL.openai) {
+            elements.openaiModelSelect.value = CURRENT_MODEL.openai;
+        }
+    } else if (tabName === 'claude') {
+        // Claude tab: ensure select is correct and fallback if missing
+        const options = Array.from(elements.claudeModelSelect.options).map(opt => opt.value);
+        if (!options.includes(CURRENT_MODEL.claude)) {
+            elements.claudeModelSelect.value = options[0];
+            CURRENT_MODEL.claude = options[0];
+        } else {
+            elements.claudeModelSelect.value = CURRENT_MODEL.claude;
+        }
+    }
+}
+
+// Populate model options for both providers
+function populateModelOptions() {
     const modelOptions = {
         openai: [
             { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
@@ -94,49 +286,108 @@ document.addEventListener('DOMContentLoaded', async () => {
             { value: 'gpt-4o', label: 'GPT-4 Omni' }
         ],
         claude: [
+            // Claude 4 Family - Latest and most powerful
+            { value: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
+            { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
+            
+            // Claude 3.7 Family
+            { value: 'claude-3-7-sonnet-20250219', label: 'Claude 3.7 Sonnet' },
+            
+            // Claude 3.5 Family
+            { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (New)' },
+            { value: 'claude-3-5-sonnet-20240620', label: 'Claude 3.5 Sonnet' },
+            { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku' },
+            
+            // Claude 3 Family
             { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
             { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
-            { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' }
+            { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+            
+            // Legacy models (still supported)
+            { value: 'claude-2.1', label: 'Claude 2.1 (Legacy)' },
+            { value: 'claude-2.0', label: 'Claude 2.0 (Legacy)' },
+            { value: 'claude-instant-1.2', label: 'Claude Instant 1.2 (Legacy)' }
         ]
     };
 
-    function updateModelOptions(provider) {
-        const models = modelOptions[provider] || [];
-        elements.modelSelect.innerHTML = '';
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.value;
-            option.textContent = model.label;
-            elements.modelSelect.appendChild(option);
-        });
-        elements.modelSelect.disabled = models.length === 0;
-    }
-
-    elements.providerSelect.addEventListener('change', () => {
-        updateModelOptions(elements.providerSelect.value);
+    // Populate OpenAI models
+    elements.openaiModelSelect.innerHTML = '';
+    modelOptions.openai.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.value;
+        option.textContent = model.label;
+        elements.openaiModelSelect.appendChild(option);
     });
+    // Set value or fallback to first option
+    elements.openaiModelSelect.value = modelOptions.openai.some(m => m.value === CURRENT_MODEL.openai)
+        ? CURRENT_MODEL.openai
+        : modelOptions.openai[0].value;
+    CURRENT_MODEL.openai = elements.openaiModelSelect.value;
 
-    updateModelOptions(elements.providerSelect.value);
-});
+    // Populate Claude models
+    elements.claudeModelSelect.innerHTML = '';
+    modelOptions.claude.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.value;
+        option.textContent = model.label;
+        elements.claudeModelSelect.appendChild(option);
+    });
+    // Set value or fallback to first option
+    elements.claudeModelSelect.value = modelOptions.claude.some(m => m.value === CURRENT_MODEL.claude)
+        ? CURRENT_MODEL.claude
+        : modelOptions.claude[0].value;
+    CURRENT_MODEL.claude = elements.claudeModelSelect.value;
+
+    // Add event listeners for model selection
+    elements.openaiModelSelect.addEventListener('change', () => {
+        CURRENT_MODEL.openai = elements.openaiModelSelect.value;
+        // Save both as 'model' (backward compatibility) and 'openaiModel'
+        browser.storage.sync.set({ 
+            model: CURRENT_MODEL.openai,
+            openaiModel: CURRENT_MODEL.openai 
+        });
+    });
+    
+    elements.claudeModelSelect.addEventListener('change', () => {
+        CURRENT_MODEL.claude = elements.claudeModelSelect.value;
+        browser.storage.sync.set({ claudeModel: CURRENT_MODEL.claude });
+    });
+}
 
 // Restore previous chat messages from history
-function restoreChat() {
-// Clear chat container safely
-while (elements.chatContainer.firstChild) {
-    elements.chatContainer.removeChild(elements.chatContainer.firstChild);
-}
-    chatHistory.forEach(msg => {
+async function restoreChat(provider) {
+    const chatContainer = provider === 'openai' ? elements.openaiChatContainer : elements.claudeChatContainer;
+
+    // Clear chat container safely
+    while (chatContainer.firstChild) {
+        chatContainer.removeChild(chatContainer.firstChild);
+    }
+
+    // Always reload from storage to avoid missing last message
+    const storageKey = provider === 'openai' ? 'chatHistory_openai' : 'chatHistory_claude';
+    const stored = await browser.storage.sync.get(storageKey);
+    if (stored[storageKey]) {
+        chatHistories[provider] = stored[storageKey];
+    }
+
+    chatHistories[provider].forEach(msg => {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${msg.isUser ? 'user-message' : 'assistant-message'}`;
+        
         if (msg.isUser) {
             messageDiv.textContent = msg.content;
         } else {
-            const sanitizedHtml = DOMPurify.sanitize(marked.parse(msg.content));
-            setCleanHtml(messageDiv, sanitizedHtml); 
+            // Parse markdown to HTML and set it to the message div
+            setCleanHtml(messageDiv, marked.parse(msg.content));
         }
-        elements.chatContainer.appendChild(messageDiv);
+        
+        // Add copy button to the message
+        createCopyButton(messageDiv, msg.content);
+        
+        chatContainer.appendChild(messageDiv);
     });
-    elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+    
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 // Display notification with animation
@@ -150,14 +401,12 @@ function showNotification(duration = 2000) {
         elements.notification.classList.remove('show');
         setTimeout(() => {
             elements.notification.classList.add('hidden');
-            elements.settingsPanel.classList.add('hidden');
         }, 300);
     }, duration);
 }
 
 // Send message to API
-async function sendMessage(userMessage) {
-    const provider = elements.providerSelect.value;
+async function sendMessage(userMessage, provider) {
     const API_KEY = API_KEYS[provider];
     if (!API_KEY) {
         throw new Error(`Please set your ${provider} API key`);
@@ -167,7 +416,7 @@ async function sendMessage(userMessage) {
         if (provider === 'openai') {
             // OpenAI API call via background script to avoid CORS issues
             const messages = [
-                ...chatHistory.map(msg => ({
+                ...chatHistories.openai.map(msg => ({
                     role: msg.isUser ? 'user' : 'assistant',
                     content: msg.content
                 })),
@@ -179,7 +428,7 @@ async function sendMessage(userMessage) {
                 browser.runtime.sendMessage({
                     action: "callOpenAIAPI",
                     apiKey: API_KEY,
-                    model: elements.modelSelect.value,
+                    model: CURRENT_MODEL.openai,
                     messages: messages
                 }, response => {
                     if (response.success) {
@@ -198,7 +447,7 @@ async function sendMessage(userMessage) {
         } else if (provider === 'claude') {
             // Claude API call via background script to avoid CORS issues
             const messages = [
-                ...chatHistory.map(msg => ({
+                ...chatHistories.claude.map(msg => ({
                     role: msg.isUser ? 'user' : 'assistant',
                     content: msg.content
                 })),
@@ -210,7 +459,7 @@ async function sendMessage(userMessage) {
                 browser.runtime.sendMessage({
                     action: "callClaudeAPI",
                     apiKey: API_KEY,
-                    model: elements.modelSelect.value,
+                    model: CURRENT_MODEL.claude,
                     messages: messages
                 }, response => {
                     if (response.success) {
@@ -233,34 +482,93 @@ async function sendMessage(userMessage) {
     }
 }
 
+// Function to create a copy button for messages
+function createCopyButton(messageDiv, content) {
+    const copyButton = document.createElement('div');
+    copyButton.className = 'copy-button';
+    copyButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+    `;
+    
+    // Add click event to copy message content
+    copyButton.addEventListener('click', async () => {
+        try {
+            // Get the text content of the message
+            let textToCopy = content;
+            
+            // Copy to clipboard
+            await navigator.clipboard.writeText(textToCopy);
+            
+            // Optional: Show a notification or console log for debugging
+            console.log('Text copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    });
+    
+    messageDiv.appendChild(copyButton);
+}
+
 // Add new message to chat interface and save to history
-function addMessageToChat(message, isUser) {
+function addMessageToChat(message, isUser, provider) {
+    const chatContainer = provider === 'openai' ? elements.openaiChatContainer : elements.claudeChatContainer;
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
     
     if (isUser) {
         messageDiv.textContent = message;
     } else {
-        const sanitizedHtml = DOMPurify.sanitize(marked.parse(message));
-        setCleanHtml(messageDiv, sanitizedHtml); 
+        // Parse markdown to HTML and set it to the message div
+        setCleanHtml(messageDiv, marked.parse(message));
     }
-    elements.chatContainer.appendChild(messageDiv);
-    elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
     
-    chatHistory.push({ content: message, isUser });
-    browser.storage.sync.set({ chatHistory });
+    // Add copy button to the message
+    createCopyButton(messageDiv, message);
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    chatHistories[provider].push({ content: message, isUser });
+    browser.storage.sync.set({ [`chatHistory_${provider}`]: chatHistories[provider] });
 }
 
-// Event Listeners
-elements.sendButton.addEventListener('click', async () => {
-    const message = elements.userInput.value.trim();
+// Helper function to auto-resize textarea
+function autoResizeTextarea(textarea) {
+    // Reset height to get accurate scrollHeight
+    textarea.style.height = '20px';
+    
+    // Calculate new height based on content
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 20), 120);
+    
+    // Apply new height
+    textarea.style.height = newHeight + 'px';
+    
+    // Show scrollbar if content exceeds max height
+    if (textarea.scrollHeight > 120) {
+        textarea.style.overflowY = 'auto';
+    } else {
+        textarea.style.overflowY = 'hidden';
+    }
+}
+
+// Event Listeners for OpenAI
+elements.openaiSendButton.addEventListener('click', async () => {
+    const message = elements.openaiUserInput.value.trim();
     if (message) {
+        let loadingDiv = null;
         try {
-            addMessageToChat(message, true);
-            elements.userInput.value = '';
-            
+            addMessageToChat(message, true, 'openai');
+            elements.openaiUserInput.value = '';
+            // Reset textarea height after clearing
+            autoResizeTextarea(elements.openaiUserInput);
+            saveInputDraft('openai', ''); // Clear draft
+
             // Create loading message with animated dots
-            const loadingDiv = document.createElement('div');
+            loadingDiv = document.createElement('div');
             loadingDiv.className = 'message assistant-message';
             
             // Create a span with the loading-dots class for animation
@@ -269,42 +577,92 @@ elements.sendButton.addEventListener('click', async () => {
             loadingSpan.textContent = 'Thinking';
             
             loadingDiv.appendChild(loadingSpan);
-            elements.chatContainer.appendChild(loadingDiv);
-            elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+            elements.openaiChatContainer.appendChild(loadingDiv);
+            elements.openaiChatContainer.scrollTop = elements.openaiChatContainer.scrollHeight;
 
-            const response = await sendMessage(message);
-            elements.chatContainer.removeChild(loadingDiv);
-            addMessageToChat(response, false);
+            const response = await sendMessage(message, 'openai');
+            // Remove loading message
+            if (loadingDiv && loadingDiv.parentNode) {
+                elements.openaiChatContainer.removeChild(loadingDiv);
+            }
+            addMessageToChat(response, false, 'openai');
         } catch (error) {
-            addMessageToChat(`Error: ${error.message}`, false);
+            // Ensure loading message is removed on error
+            if (loadingDiv && loadingDiv.parentNode) {
+                elements.openaiChatContainer.removeChild(loadingDiv);
+            }
+            addMessageToChat(`Error: ${error.message}`, false, 'openai');
         }
     }
 });
 
-elements.clearHistoryButton.addEventListener('click', () => {
-    // Clear chat container safely
-    while (elements.chatContainer.firstChild) {
-        elements.chatContainer.removeChild(elements.chatContainer.firstChild);
+// Event Listeners for Claude
+elements.claudeSendButton.addEventListener('click', async () => {
+    const message = elements.claudeUserInput.value.trim();
+    if (message) {
+        let loadingDiv = null;
+        try {
+            addMessageToChat(message, true, 'claude');
+            elements.claudeUserInput.value = '';
+            // Reset textarea height after clearing
+            autoResizeTextarea(elements.claudeUserInput);
+            saveInputDraft('claude', ''); // Clear draft
+
+            // Create loading message with animated dots
+            loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant-message';
+            
+            // Create a span with the loading-dots class for animation
+            const loadingSpan = document.createElement('span');
+            loadingSpan.className = 'loading-dots';
+            loadingSpan.textContent = 'Thinking';
+            
+            loadingDiv.appendChild(loadingSpan);
+            elements.claudeChatContainer.appendChild(loadingDiv);
+            elements.claudeChatContainer.scrollTop = elements.claudeChatContainer.scrollHeight;
+
+            const response = await sendMessage(message, 'claude');
+            // Remove loading message
+            if (loadingDiv && loadingDiv.parentNode) {
+                elements.claudeChatContainer.removeChild(loadingDiv);
+            }
+            addMessageToChat(response, false, 'claude');
+        } catch (error) {
+            // Ensure loading message is removed on error
+            if (loadingDiv && loadingDiv.parentNode) {
+                elements.claudeChatContainer.removeChild(loadingDiv);
+            }
+            addMessageToChat(`Error: ${error.message}`, false, 'claude');
+        }
     }
-    chatHistory = [];
-    browser.storage.sync.set({ chatHistory });
 });
 
-elements.settingsButton.addEventListener('click', () => {
-    elements.settingsPanel.classList.toggle('hidden');
+// Clear history buttons
+elements.openaiClearHistoryButton.addEventListener('click', () => {
+    // Clear chat container safely
+    while (elements.openaiChatContainer.firstChild) {
+        elements.openaiChatContainer.removeChild(elements.openaiChatContainer.firstChild);
+    }
+    chatHistories.openai = [];
+    browser.storage.sync.set({ chatHistory_openai: [] });
+});
+
+elements.claudeClearHistoryButton.addEventListener('click', () => {
+    // Clear chat container safely
+    while (elements.claudeChatContainer.firstChild) {
+        elements.claudeChatContainer.removeChild(elements.claudeChatContainer.firstChild);
+    }
+    chatHistories.claude = [];
+    browser.storage.sync.set({ chatHistory_claude: [] });
 });
 
 elements.clearApiKeyButton.addEventListener('click', async () => {
-    const provider = elements.providerSelect.value;
-    if (provider === 'openai') {
-        await browser.storage.sync.set({ apiKey: '' });
-        elements.apiKeyInput.value = '';
-        API_KEYS.openai = '';
-    } else if (provider === 'claude') {
-        await browser.storage.sync.set({ claudeKey: '' });
-        elements.claudeKeyInput.value = '';
-        API_KEYS.claude = '';
-    }
+    // Clear both API keys
+    await browser.storage.sync.set({ apiKey: '', claudeKey: '' });
+    elements.apiKeyInput.value = '';
+    elements.claudeKeyInput.value = '';
+    API_KEYS.openai = '';
+    API_KEYS.claude = '';
 });
 
 elements.saveSettingsButton.addEventListener('click', async () => {
@@ -315,24 +673,30 @@ elements.saveSettingsButton.addEventListener('click', async () => {
     const theme = elements.themeSelect.value;
     const selectedColor = document.querySelector('.color-option.selected')?.getAttribute('data-color') || '#10A37F';
 
-    // Save all settings
+    // Save all settings including current models
     await browser.storage.sync.set({
         apiKey: API_KEYS.openai,
         claudeKey: API_KEYS.claude,
         theme,
-        primaryColor: selectedColor
+        primaryColor: selectedColor,
+        openaiModel: CURRENT_MODEL.openai,  // Save OpenAI model
+        claudeModel: CURRENT_MODEL.claude,  // Save Claude model
+        model: CURRENT_MODEL.openai         // Backward compatibility
     });
     
     // Log saved settings for debugging
     console.log('Saved settings:', {
         openai: API_KEYS.openai,
         claude: API_KEYS.claude,
+        openaiModel: CURRENT_MODEL.openai,
+        claudeModel: CURRENT_MODEL.claude,
         theme,
         primaryColor: selectedColor
     });
     
     applyTheme(theme);
     applyAccentColor(selectedColor);
+    elements.themeSelect.value = theme; // ensure select stays in sync
     showNotification();
 });
 
@@ -357,19 +721,50 @@ document.getElementById('color-palette').addEventListener('click', (e) => {
     }
 });
 
-// Input handling for message sending
-elements.userInput.addEventListener('keydown', (e) => {
+// Input handling for message sending - OpenAI
+elements.openaiUserInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         if (e.ctrlKey) {
             e.preventDefault();
-            const start = elements.userInput.selectionStart;
-            const end = elements.userInput.selectionEnd;
-            const value = elements.userInput.value;
-            elements.userInput.value = value.substring(0, start) + '\n' + value.substring(end);
-            elements.userInput.selectionStart = elements.userInput.selectionEnd = start + 1;
+            const start = elements.openaiUserInput.selectionStart;
+            const end = elements.openaiUserInput.selectionEnd;
+            const value = elements.openaiUserInput.value;
+            elements.openaiUserInput.value = value.substring(0, start) + '\n' + value.substring(end);
+            elements.openaiUserInput.selectionStart = elements.openaiUserInput.selectionEnd = start + 1;
+            // Trigger auto-resize after adding new line
+            autoResizeTextarea(elements.openaiUserInput);
         } else if (!e.shiftKey) {
             e.preventDefault();
-            elements.sendButton.click();
+            elements.openaiSendButton.click();
         }
     }
+});
+
+// Input handling for message sending - Claude
+elements.claudeUserInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const start = elements.claudeUserInput.selectionStart;
+            const end = elements.claudeUserInput.selectionEnd;
+            const value = elements.claudeUserInput.value;
+            elements.claudeUserInput.value = value.substring(0, start) + '\n' + value.substring(end);
+            elements.claudeUserInput.selectionStart = elements.claudeUserInput.selectionEnd = start + 1;
+            // Trigger auto-resize after adding new line
+            autoResizeTextarea(elements.claudeUserInput);
+        } else if (!e.shiftKey) {
+            e.preventDefault();
+            elements.claudeSendButton.click();
+        }
+    }
+});
+
+// Save input drafts on input and auto-resize
+elements.openaiUserInput.addEventListener('input', (e) => {
+    saveInputDraft('openai', e.target.value);
+    autoResizeTextarea(e.target);
+});
+elements.claudeUserInput.addEventListener('input', (e) => {
+    saveInputDraft('claude', e.target.value);
+    autoResizeTextarea(e.target);
 });

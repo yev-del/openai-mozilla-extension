@@ -8,7 +8,13 @@ browser.runtime.onInstalled.addListener(() => {
         theme: 'light',          // Default theme setting
         primaryColor: '#10A37F', // Default accent color
         apiKey: '',              // Empty API key by default
-        claudeKey: ''            // Empty Claude API key by default
+        claudeKey: '',           // Empty Claude API key by default
+        provider: 'openai',      // Default provider
+        openaiModel: 'gpt-3.5-turbo',        // Default OpenAI model
+        claudeModel: 'claude-opus-4-20250514', // Default Claude model (latest)
+        model: 'gpt-3.5-turbo',  // Backward compatibility
+        chatHistory_openai: [],  // Empty chat history for OpenAI
+        chatHistory_claude: []   // Empty chat history for Claude
     });
 });
 
