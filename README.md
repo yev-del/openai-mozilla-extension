@@ -269,8 +269,7 @@ Both providers offer generous free tiers for new users.
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **Issues**: [GitHub Issues](https://github.com/yev-del/openai-mozilla-extension/issues)
 - **Documentation**: This README and inline code comments
 
 ---
