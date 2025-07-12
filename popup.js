@@ -74,6 +74,7 @@ function setCleanHtml(element, html) {
     const sanitizedHtml = DOMPurify.sanitize(html, purifyConfig);
     
     // Set the sanitized HTML to the element
+    // The HTML has been sanitized with DOMPurify and is safe to assign
     element.innerHTML = sanitizedHtml;
     
     // Add target="_blank" to all links to open in new tab
@@ -88,20 +89,24 @@ function setCleanHtml(element, html) {
 // API configuration and constants
 const API_URLS = {
     openai: 'https://api.openai.com/v1/chat/completions',
-    claude: 'https://api.anthropic.com/v1/messages'
+    claude: 'https://api.anthropic.com/v1/messages',
+    grok: 'https://api.x.ai/v1/chat/completions'
 };
 let API_KEYS = {
     openai: '',
-    claude: ''
+    claude: '',
+    grok: ''
 };
 let CURRENT_MODEL = {
     openai: 'gpt-3.5-turbo',
-    claude: 'claude-3-sonnet-20240229'
+    claude: 'claude-3-sonnet-20240229',
+    grok: 'grok-2-1212'
 };
 let CURRENT_PROVIDER = 'openai';
 let chatHistories = {
     openai: [],
-    claude: []
+    claude: [],
+    grok: []
 };
 
 // DOM elements mapping
@@ -124,9 +129,17 @@ const elements = {
     claudeModelSelect: document.getElementById('claude-model-select'),
     claudeClearHistoryButton: document.getElementById('claude-clear-history'),
     
+    // GROK tab elements
+    grokChatContainer: document.getElementById('grok-chat-container'),
+    grokUserInput: document.getElementById('grok-user-input'),
+    grokSendButton: document.getElementById('grok-send-button'),
+    grokModelSelect: document.getElementById('grok-model-select'),
+    grokClearHistoryButton: document.getElementById('grok-clear-history'),
+    
     // Settings elements
     apiKeyInput: document.getElementById('api-key'),
     claudeKeyInput: document.getElementById('claude-api-key'),
+    grokKeyInput: document.getElementById('grok-api-key'),
     themeSelect: document.getElementById('theme-select'),
     saveSettingsButton: document.getElementById('save-settings'),
     clearApiKeyButton: document.getElementById('clear-api-key'),
@@ -152,15 +165,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     API_KEYS.openai = settings.apiKey || '';
     API_KEYS.claude = settings.claudeKey || '';
+    API_KEYS.grok = settings.grokKey || '';
     
     console.log('Loaded API keys:', {
         openai: API_KEYS.openai,
-        claude: API_KEYS.claude
+        claude: API_KEYS.claude,
+        grok: API_KEYS.grok
     });
 
     // Set initial values for API key inputs
     elements.apiKeyInput.value = API_KEYS.openai;
     elements.claudeKeyInput.value = API_KEYS.claude;
+    elements.grokKeyInput.value = API_KEYS.grok;
     
     // Restore chat histories
     if (settings.chatHistory_openai) {
@@ -171,13 +187,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         chatHistories.claude = settings.chatHistory_claude;
     }
     
+    if (settings.chatHistory_grok) {
+        chatHistories.grok = settings.chatHistory_grok;
+    }
+    
     // For backward compatibility
     if (settings.chatHistory && !settings.chatHistory_openai && !settings.chatHistory_claude) {
         const provider = settings.provider || 'openai';
         chatHistories[provider] = settings.chatHistory;
     }
     
-    // Restore provider and model selection - FIX: Properly restore both models
+    // Restore provider and model selection - FIX: Properly restore all models
     CURRENT_PROVIDER = settings.provider || 'openai';
     
     // Restore OpenAI model (backward compatibility with 'model' key)
@@ -190,6 +210,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Restore Claude model
     if (settings.claudeModel) {
         CURRENT_MODEL.claude = settings.claudeModel;
+    }
+    
+    // Restore GROK model
+    if (settings.grokModel) {
+        CURRENT_MODEL.grok = settings.grokModel;
     }
 
     console.log('Restored models:', CURRENT_MODEL);
@@ -204,19 +229,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Set up tabs
     setupTabs();
 
-    // Restore chat for both providers
+    // Restore chat for all providers
     await restoreChat('openai');
     await restoreChat('claude');
+    await restoreChat('grok');
 
     // Restore input drafts
     elements.openaiUserInput.value = await restoreInputDraft('openai');
     elements.claudeUserInput.value = await restoreInputDraft('claude');
+    elements.grokUserInput.value = await restoreInputDraft('grok');
 
-    // Populate model options for both providers - this will set the correct values
+    // Populate model options for all providers - this will set the correct values
     populateModelOptions();
     
     // Set the active tab based on the last provider
-    setActiveTab(CURRENT_PROVIDER === 'claude' ? 'claude' : 'chatgpt');
+    setActiveTab(CURRENT_PROVIDER === 'claude' ? 'claude' : CURRENT_PROVIDER === 'grok' ? 'grok' : 'chatgpt');
 });
 
 // Set up tab functionality
@@ -232,6 +259,9 @@ function setupTabs() {
                 browser.storage.sync.set({ provider: CURRENT_PROVIDER });
             } else if (tabName === 'claude') {
                 CURRENT_PROVIDER = 'claude';
+                browser.storage.sync.set({ provider: CURRENT_PROVIDER });
+            } else if (tabName === 'grok') {
+                CURRENT_PROVIDER = 'grok';
                 browser.storage.sync.set({ provider: CURRENT_PROVIDER });
             }
         });
@@ -273,6 +303,15 @@ function setActiveTab(tabName) {
         } else {
             elements.claudeModelSelect.value = CURRENT_MODEL.claude;
         }
+    } else if (tabName === 'grok') {
+        // GROK tab: ensure select is correct and fallback if missing
+        const options = Array.from(elements.grokModelSelect.options).map(opt => opt.value);
+        if (!options.includes(CURRENT_MODEL.grok)) {
+            elements.grokModelSelect.value = options[0];
+            CURRENT_MODEL.grok = options[0];
+        } else {
+            elements.grokModelSelect.value = CURRENT_MODEL.grok;
+        }
     }
 }
 
@@ -307,6 +346,15 @@ function populateModelOptions() {
             { value: 'claude-2.1', label: 'Claude 2.1 (Legacy)' },
             { value: 'claude-2.0', label: 'Claude 2.0 (Legacy)' },
             { value: 'claude-instant-1.2', label: 'Claude Instant 1.2 (Legacy)' }
+        ],
+        grok: [
+            { value: 'grok-4', label: 'Grok 4 (Latest)' },
+            { value: 'grok-3', label: 'Grok 3' },
+            { value: 'grok-3-mini', label: 'Grok 3 Mini' },
+            { value: 'grok-2-vision-1212', label: 'Grok 2 Vision' },
+            { value: 'grok-2-1212', label: 'Grok 2' },
+            { value: 'grok-vision-beta', label: 'Grok Vision Beta' },
+            { value: 'grok-beta', label: 'Grok Beta' }
         ]
     };
 
@@ -338,6 +386,20 @@ function populateModelOptions() {
         : modelOptions.claude[0].value;
     CURRENT_MODEL.claude = elements.claudeModelSelect.value;
 
+    // Populate GROK models
+    elements.grokModelSelect.innerHTML = '';
+    modelOptions.grok.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.value;
+        option.textContent = model.label;
+        elements.grokModelSelect.appendChild(option);
+    });
+    // Set value or fallback to first option
+    elements.grokModelSelect.value = modelOptions.grok.some(m => m.value === CURRENT_MODEL.grok)
+        ? CURRENT_MODEL.grok
+        : modelOptions.grok[0].value;
+    CURRENT_MODEL.grok = elements.grokModelSelect.value;
+
     // Add event listeners for model selection
     elements.openaiModelSelect.addEventListener('change', () => {
         CURRENT_MODEL.openai = elements.openaiModelSelect.value;
@@ -352,11 +414,16 @@ function populateModelOptions() {
         CURRENT_MODEL.claude = elements.claudeModelSelect.value;
         browser.storage.sync.set({ claudeModel: CURRENT_MODEL.claude });
     });
+    
+    elements.grokModelSelect.addEventListener('change', () => {
+        CURRENT_MODEL.grok = elements.grokModelSelect.value;
+        browser.storage.sync.set({ grokModel: CURRENT_MODEL.grok });
+    });
 }
 
 // Restore previous chat messages from history
 async function restoreChat(provider) {
-    const chatContainer = provider === 'openai' ? elements.openaiChatContainer : elements.claudeChatContainer;
+    const chatContainer = provider === 'openai' ? elements.openaiChatContainer : provider === 'claude' ? elements.claudeChatContainer : elements.grokChatContainer;
 
     // Clear chat container safely
     while (chatContainer.firstChild) {
@@ -364,7 +431,7 @@ async function restoreChat(provider) {
     }
 
     // Always reload from storage to avoid missing last message
-    const storageKey = provider === 'openai' ? 'chatHistory_openai' : 'chatHistory_claude';
+    const storageKey = provider === 'openai' ? 'chatHistory_openai' : provider === 'claude' ? 'chatHistory_claude' : 'chatHistory_grok';
     const stored = await browser.storage.sync.get(storageKey);
     if (stored[storageKey]) {
         chatHistories[provider] = stored[storageKey];
@@ -475,6 +542,41 @@ async function sendMessage(userMessage, provider) {
                     }
                 });
             });
+        } else if (provider === 'grok') {
+            // GROK API call via background script to avoid CORS issues
+            const messages = [
+                ...chatHistories.grok.map(msg => ({
+                    role: msg.isUser ? 'user' : 'assistant',
+                    content: msg.content
+                })),
+                { role: 'user', content: userMessage }
+            ];
+            
+            // Send message to background script
+            return new Promise((resolve, reject) => {
+                browser.runtime.sendMessage({
+                    action: "callGrokAPI",
+                    apiKey: API_KEY,
+                    model: CURRENT_MODEL.grok,
+                    messages: messages
+                }, response => {
+                    console.log("GROK API response received:", response);
+                    if (response.success) {
+                        if (response.data.choices && response.data.choices.length > 0) {
+                            resolve(response.data.choices[0].message.content);
+                        } else if (response.data.error) {
+                            console.error("GROK API returned error:", response.data.error);
+                            reject(new Error(response.data.error.message || 'GROK API error'));
+                        } else {
+                            console.error("Unexpected GROK API response format:", response.data);
+                            reject(new Error('Unexpected response format from GROK API'));
+                        }
+                    } else {
+                        console.error("GROK API call failed:", response.error);
+                        reject(new Error(response.error || 'Failed to call GROK API'));
+                    }
+                });
+            });
         }
     } catch (error) {
         console.error('API Error:', error);
@@ -514,7 +616,7 @@ function createCopyButton(messageDiv, content) {
 
 // Add new message to chat interface and save to history
 function addMessageToChat(message, isUser, provider) {
-    const chatContainer = provider === 'openai' ? elements.openaiChatContainer : elements.claudeChatContainer;
+    const chatContainer = provider === 'openai' ? elements.openaiChatContainer : provider === 'claude' ? elements.claudeChatContainer : elements.grokChatContainer;
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
@@ -536,23 +638,66 @@ function addMessageToChat(message, isUser, provider) {
     browser.storage.sync.set({ [`chatHistory_${provider}`]: chatHistories[provider] });
 }
 
-// Helper function to auto-resize textarea
+// Helper function to auto-resize textarea with proper line wrapping detection
 function autoResizeTextarea(textarea) {
-    // Reset height to get accurate scrollHeight
-    textarea.style.height = '20px';
+    // Get computed styles
+    const computedStyle = window.getComputedStyle(textarea);
+    const lineHeight = parseInt(computedStyle.lineHeight) || 20;
+    const paddingTop = parseInt(computedStyle.paddingTop) || 0;
+    const paddingBottom = parseInt(computedStyle.paddingBottom) || 0;
+    const borderTop = parseInt(computedStyle.borderTopWidth) || 0;
+    const borderBottom = parseInt(computedStyle.borderBottomWidth) || 0;
     
-    // Calculate new height based on content
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, 20), 120);
+    // Calculate heights
+    const minHeight = lineHeight + paddingTop + paddingBottom + borderTop + borderBottom;
+    const maxHeight = (lineHeight * 6) + paddingTop + paddingBottom + borderTop + borderBottom;
     
-    // Apply new height
-    textarea.style.height = newHeight + 'px';
-    
-    // Show scrollbar if content exceeds max height
-    if (textarea.scrollHeight > 120) {
-        textarea.style.overflowY = 'auto';
-    } else {
-        textarea.style.overflowY = 'hidden';
+    // If textarea is empty, set to minimum height
+    if (!textarea.value) {
+        textarea.style.height = minHeight + 'px';
+        textarea.style.overflow = 'hidden';
+        return;
     }
+    
+    // Create a hidden clone to measure actual content height
+    const clone = document.createElement('textarea');
+    clone.style.position = 'absolute';
+    clone.style.visibility = 'hidden';
+    clone.style.height = 'auto';
+    clone.style.width = textarea.offsetWidth + 'px';
+    clone.style.fontSize = computedStyle.fontSize;
+    clone.style.fontFamily = computedStyle.fontFamily;
+    clone.style.lineHeight = computedStyle.lineHeight;
+    clone.style.padding = computedStyle.padding;
+    clone.style.border = computedStyle.border;
+    clone.style.boxSizing = computedStyle.boxSizing;
+    clone.style.wordWrap = computedStyle.wordWrap;
+    clone.style.whiteSpace = computedStyle.whiteSpace;
+    clone.value = textarea.value;
+    
+    // Add clone to document temporarily
+    document.body.appendChild(clone);
+    
+    // Measure the content height
+    const contentHeight = clone.scrollHeight;
+    
+    // Remove clone
+    document.body.removeChild(clone);
+    
+    // Calculate target height
+    let targetHeight;
+    if (contentHeight <= minHeight) {
+        targetHeight = minHeight;
+    } else if (contentHeight >= maxHeight) {
+        targetHeight = maxHeight;
+        textarea.style.overflow = 'auto';
+    } else {
+        targetHeight = contentHeight;
+        textarea.style.overflow = 'hidden';
+    }
+    
+    // Apply the height
+    textarea.style.height = targetHeight + 'px';
 }
 
 // Event Listeners for OpenAI
@@ -637,6 +782,47 @@ elements.claudeSendButton.addEventListener('click', async () => {
     }
 });
 
+// Event Listeners for GROK
+elements.grokSendButton.addEventListener('click', async () => {
+    const message = elements.grokUserInput.value.trim();
+    if (message) {
+        let loadingDiv = null;
+        try {
+            addMessageToChat(message, true, 'grok');
+            elements.grokUserInput.value = '';
+            // Reset textarea height after clearing
+            autoResizeTextarea(elements.grokUserInput);
+            saveInputDraft('grok', ''); // Clear draft
+
+            // Create loading message with animated dots
+            loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant-message';
+            
+            // Create a span with the loading-dots class for animation
+            const loadingSpan = document.createElement('span');
+            loadingSpan.className = 'loading-dots';
+            loadingSpan.textContent = 'Thinking';
+            
+            loadingDiv.appendChild(loadingSpan);
+            elements.grokChatContainer.appendChild(loadingDiv);
+            elements.grokChatContainer.scrollTop = elements.grokChatContainer.scrollHeight;
+
+            const response = await sendMessage(message, 'grok');
+            // Remove loading message
+            if (loadingDiv && loadingDiv.parentNode) {
+                elements.grokChatContainer.removeChild(loadingDiv);
+            }
+            addMessageToChat(response, false, 'grok');
+        } catch (error) {
+            // Ensure loading message is removed on error
+            if (loadingDiv && loadingDiv.parentNode) {
+                elements.grokChatContainer.removeChild(loadingDiv);
+            }
+            addMessageToChat(`Error: ${error.message}`, false, 'grok');
+        }
+    }
+});
+
 // Clear history buttons
 elements.openaiClearHistoryButton.addEventListener('click', () => {
     // Clear chat container safely
@@ -656,19 +842,31 @@ elements.claudeClearHistoryButton.addEventListener('click', () => {
     browser.storage.sync.set({ chatHistory_claude: [] });
 });
 
+elements.grokClearHistoryButton.addEventListener('click', () => {
+    // Clear chat container safely
+    while (elements.grokChatContainer.firstChild) {
+        elements.grokChatContainer.removeChild(elements.grokChatContainer.firstChild);
+    }
+    chatHistories.grok = [];
+    browser.storage.sync.set({ chatHistory_grok: [] });
+});
+
 elements.clearApiKeyButton.addEventListener('click', async () => {
     // Clear both API keys
-    await browser.storage.sync.set({ apiKey: '', claudeKey: '' });
+    await browser.storage.sync.set({ apiKey: '', claudeKey: '', grokKey: '' });
     elements.apiKeyInput.value = '';
     elements.claudeKeyInput.value = '';
+    elements.grokKeyInput.value = '';
     API_KEYS.openai = '';
     API_KEYS.claude = '';
+    API_KEYS.grok = '';
 });
 
 elements.saveSettingsButton.addEventListener('click', async () => {
     // Get all API keys
     API_KEYS.openai = elements.apiKeyInput.value;
     API_KEYS.claude = elements.claudeKeyInput.value;
+    API_KEYS.grok = elements.grokKeyInput.value;
 
     const theme = elements.themeSelect.value;
     const selectedColor = document.querySelector('.color-option.selected')?.getAttribute('data-color') || '#10A37F';
@@ -677,10 +875,12 @@ elements.saveSettingsButton.addEventListener('click', async () => {
     await browser.storage.sync.set({
         apiKey: API_KEYS.openai,
         claudeKey: API_KEYS.claude,
+        grokKey: API_KEYS.grok,
         theme,
         primaryColor: selectedColor,
         openaiModel: CURRENT_MODEL.openai,  // Save OpenAI model
         claudeModel: CURRENT_MODEL.claude,  // Save Claude model
+        grokModel: CURRENT_MODEL.grok,      // Save GROK model
         model: CURRENT_MODEL.openai         // Backward compatibility
     });
     
@@ -688,8 +888,10 @@ elements.saveSettingsButton.addEventListener('click', async () => {
     console.log('Saved settings:', {
         openai: API_KEYS.openai,
         claude: API_KEYS.claude,
+        grok: API_KEYS.grok,
         openaiModel: CURRENT_MODEL.openai,
         claudeModel: CURRENT_MODEL.claude,
+        grokModel: CURRENT_MODEL.grok,
         theme,
         primaryColor: selectedColor
     });
@@ -759,6 +961,25 @@ elements.claudeUserInput.addEventListener('keydown', (e) => {
     }
 });
 
+// Input handling for message sending - GROK
+elements.grokUserInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const start = elements.grokUserInput.selectionStart;
+            const end = elements.grokUserInput.selectionEnd;
+            const value = elements.grokUserInput.value;
+            elements.grokUserInput.value = value.substring(0, start) + '\n' + value.substring(end);
+            elements.grokUserInput.selectionStart = elements.grokUserInput.selectionEnd = start + 1;
+            // Trigger auto-resize after adding new line
+            autoResizeTextarea(elements.grokUserInput);
+        } else if (!e.shiftKey) {
+            e.preventDefault();
+            elements.grokSendButton.click();
+        }
+    }
+});
+
 // Save input drafts on input and auto-resize
 elements.openaiUserInput.addEventListener('input', (e) => {
     saveInputDraft('openai', e.target.value);
@@ -766,5 +987,9 @@ elements.openaiUserInput.addEventListener('input', (e) => {
 });
 elements.claudeUserInput.addEventListener('input', (e) => {
     saveInputDraft('claude', e.target.value);
+    autoResizeTextarea(e.target);
+});
+elements.grokUserInput.addEventListener('input', (e) => {
+    saveInputDraft('grok', e.target.value);
     autoResizeTextarea(e.target);
 });

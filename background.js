@@ -9,12 +9,15 @@ browser.runtime.onInstalled.addListener(() => {
         primaryColor: '#10A37F', // Default accent color
         apiKey: '',              // Empty API key by default
         claudeKey: '',           // Empty Claude API key by default
+        grokKey: '',             // Empty GROK API key by default
         provider: 'openai',      // Default provider
         openaiModel: 'gpt-3.5-turbo',        // Default OpenAI model
         claudeModel: 'claude-opus-4-20250514', // Default Claude model (latest)
+        grokModel: 'grok-4',            // Default GROK model (latest)
         model: 'gpt-3.5-turbo',  // Backward compatibility
         chatHistory_openai: [],  // Empty chat history for OpenAI
-        chatHistory_claude: []   // Empty chat history for Claude
+        chatHistory_claude: [],  // Empty chat history for Claude
+        chatHistory_grok: []     // Empty chat history for GROK
     });
 });
 
@@ -93,6 +96,47 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => {
             console.error("OpenAI API error:", error);
             sendResponse({ success: false, error: error.message });
+        });
+        
+        // Return true to indicate we will send a response asynchronously
+        return true;
+    }
+    
+    if (request.action === "callGrokAPI") {
+        // X.AI API is OpenAI-compatible, use the correct endpoint
+        const apiUrl = 'https://api.x.ai/v1/chat/completions';
+        
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${request.apiKey}`
+            },
+            body: JSON.stringify({
+                model: request.model,
+                messages: request.messages,
+                max_tokens: 4000,
+                temperature: 0.7,
+                stream: false
+            })
+        })
+        .then(response => {
+            console.log(`GROK API Response Status: ${response.status}`);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error(`GROK API Error Response: ${text}`);
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("GROK API Success Response:", data);
+            sendResponse({ success: true, data: data });
+        })
+        .catch(error => {
+            console.error("GROK API Error Details:", error);
+            sendResponse({ success: false, error: `GROK API Error: ${error.message}` });
         });
         
         // Return true to indicate we will send a response asynchronously

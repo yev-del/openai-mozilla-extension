@@ -1,13 +1,13 @@
-# 🤖 ChatGPT & Claude API Chat Client
+# 🤖 ChatGPT, Claude & GROK API Chat Client
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4-blue.svg)
 ![Mozilla Extension](https://img.shields.io/badge/Mozilla-Extension-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![API Support](https://img.shields.io/badge/API-OpenAI%20%7C%20Claude-purple.svg)
+![API Support](https://img.shields.io/badge/API-OpenAI%20%7C%20Claude%20%7C%20GROK-purple.svg)
 
-**A powerful Mozilla Firefox extension for seamless communication with the latest AI models from OpenAI and Anthropic**
+**A powerful Mozilla Firefox extension for seamless communication with the latest AI models from OpenAI, Anthropic, and X.AI**
 
 [Installation](#-installation) • [Features](#-features) • [Usage](#-usage) • [Development](#-development) • [Changelog](#-changelog)
 
@@ -19,17 +19,20 @@
 
 ### 🧠 **Latest AI Models Support**
 - **OpenAI Models**: GPT-3.5 Turbo, GPT-4, GPT-4 Turbo, GPT-4 Omni
-- **Claude 4 Family**: Claude 4 Opus, Claude 4 Sonnet *(NEW in v1.3)*
-- **Claude 3.7**: Claude 3.7 Sonnet *(NEW in v1.3)*
+- **Claude 4 Family**: Claude 4 Opus, Claude 4 Sonnet
+- **Claude 3.7**: Claude 3.7 Sonnet
 - **Claude 3.5 Family**: Claude 3.5 Sonnet (Latest), Claude 3.5 Haiku
 - **Claude 3 Family**: Claude 3 Opus, Claude 3 Sonnet, Claude 3 Haiku
+- **GROK Models** *(NEW in v1.4)*: Grok 4, Grok 3, Grok 3 Mini, Grok 2 Vision, Grok 2, Grok Vision Beta *(Test Mode)*
 - **Legacy Support**: Claude 2.1, Claude 2.0, Claude Instant 1.2
 
 ### 🎯 **Smart Interface**
-- **Dynamic Input Fields** *(NEW in v1.3)*: Message boxes automatically expand as you type multiple lines
-- **Tab-Based Design**: Seamlessly switch between ChatGPT and Claude conversations
-- **Persistent Model Selection** *(ENHANCED in v1.3)*: Your chosen model stays selected across sessions
+- **Three-Tab Design** *(ENHANCED in v1.4)*: Seamlessly switch between ChatGPT, Claude, and GROK conversations
+- **Dynamic Input Fields**: Message boxes automatically expand as you type multiple lines
+- **Persistent Model Selection**: Your chosen model stays selected across sessions for all providers
 - **Auto-Save Drafts**: Never lose your message drafts when switching tabs
+- **Enhanced Tab Design** *(NEW in v1.4)*: Active tabs feature inverted accent colors with rounded corners
+- **Unified Hover Effects** *(NEW in v1.4)*: Icon and text zoom together with smooth animations
 - **Responsive Layout**: Optimized for the Firefox extension popup format
 
 ### 🎨 **Customization**
@@ -46,7 +49,7 @@
 
 ### ⚡ **Performance**
 - **Instant Access**: One-click communication with AI models
-- **Efficient Storage**: Optimized chat history management
+- **Efficient Storage**: Optimized chat history management for all three providers
 - **Fast Rendering**: Smooth markdown and code highlighting
 - **Memory Optimized**: Lightweight design for browser efficiency
 
@@ -80,10 +83,11 @@ cd chatgpt-claude-extension
 3. **Add your API keys**:
    - **OpenAI API Key**: Get from [OpenAI Platform](https://platform.openai.com/api-keys)
    - **Claude API Key**: Get from [Anthropic Console](https://console.anthropic.com/)
+   - **GROK API Key**: Get from [X.AI Console](https://console.x.ai/) *(NEW in v1.4)*
 4. **Save settings** and you're ready to go!
 
 ### Chatting with AI
-1. **Choose your provider**: Click either "ChatGPT" or "Claude" tab
+1. **Choose your provider**: Click "ChatGPT", "Claude", or "GROK" tab *(GROK NEW in v1.4)*
 2. **Select a model**: Use the dropdown to choose your preferred AI model
 3. **Start typing**: The input field automatically expands for longer messages
 4. **Send messages**: Press Enter or click the send button
@@ -167,17 +171,20 @@ cd chatgpt-claude-extension
 
 ## 📈 Changelog
 
-### 🎉 Version 1.3 *(Current)*
+### 🎉 Version 1.4 *(Current)*
 **🆕 Major Features:**
-- **Claude 4 Support**: Added Claude 4 Opus and Claude 4 Sonnet models
+- **GROK Support**: Added GROK 4, Grok 3, Grok 3 Mini, Grok 2 Vision, Grok 2, Grok Vision Beta models
+- **Three-Tab Design**: Effortlessly switch between ChatGPT, Claude, and GROK with distinct tabs
 - **Dynamic Input Fields**: Message boxes now auto-expand for multi-line text with smooth transitions
 - **Enhanced Model Persistence**: Selected models properly saved across sessions with improved fallback system
 - **Improved Storage System**: Better handling of settings and chat history with consistent storage keys
+- **Enhanced Tab Design**: Active tabs feature inverted accent colors with rounded corners
+- **Unified Hover Effects**: Icon and text zoom together with smooth animations
 
 **🔧 Technical Improvements:**
 - Fixed critical loading message cleanup bug that could leave animations on screen
 - Resolved duplicate script loading issue that could cause JavaScript conflicts
-- Enhanced storage key consistency for both OpenAI and Claude models
+- Enhanced storage key consistency for OpenAI, Claude, and GROK models
 - Improved textarea auto-resize functionality with proper height reset
 - Better error handling for API responses with robust cleanup
 - Added automatic textarea height reset when messages are sent

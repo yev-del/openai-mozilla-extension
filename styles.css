@@ -87,17 +87,35 @@ body {
 
 .tab.active {
     border-bottom: 2px solid var(--accent-color);
-    color: var(--accent-color);
-    background-color: var(--bg-primary);
+    color: white;
+    background-color: var(--accent-color);
+    border-radius: 8px 8px 0 0;
+}
+
+.tab.active svg {
+    color: white;
+    stroke: white;
 }
 
 .tab:hover {
     background-color: var(--bg-primary);
+    transform: scale(1.02);
 }
 
-.tab svg {
-    width: 18px;
-    height: 18px;
+.tab.active:hover {
+    background-color: var(--accent-color);
+    transform: scale(1.02);
+}
+
+.tab:hover .tab-inner {
+    transform: scale(1.2);
+}
+
+.tab-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 1s ease;
 }
 
 /* Tab content */
